@@ -20,6 +20,8 @@
 
 ---
 
+## 🎮 [**Play it live in your browser →**](https://moonwho101.github.io/DungeonStompWebXR/)
+
 ## 📖 Overview
 
 **Dungeon Stomp (Godot)** is a complete, native first-person 3D dungeon crawler built from the ground up for **Godot 4.7.2** using pure **GDScript**. It is a modern engine revival of the classic Direct3D dungeon crawler by [Mark Longo (moonwho101)](https://github.com/moonwho101), faithfully recreating the original gameplay, levels, models, textures, and sounds with modern engine capabilities.
