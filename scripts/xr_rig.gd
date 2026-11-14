@@ -1,7 +1,6 @@
-# OpenXR support: head-tracked view, controller locomotion, a controller-held player weapon rendered in a
+# XR support: head-tracked view, controller locomotion, a controller-held player weapon rendered in a
 # fixed MD2 pose (frame 0, never animated - the controller supplies all motion), physical swing melee and a
-# world-space panel for the 2D UI. Only created when an OpenXR runtime is available; otherwise the desktop
-# camera path is used unchanged.
+# world-space panel for the 2D UI. The desktop camera path is used when no XR session is active.
 #
 # The game's existing `camera` keeps acting as the player body/head proxy (collision, saves, minimap and AI all
 # read it). Each frame the rig moves the XR origin so the tracked head sits on that proxy, and copies the head
@@ -49,6 +48,7 @@ const STAT_BAR_ANGLES := Vector2(0.0, -30.0) # top edge (centre) of the stat bar
 
 var game # Game (untyped to avoid a class cycle)
 var simulated := false # --xr-simulate: build the rig without a runtime, using fixed head/hand poses
+var webxr := false
 var origin: XROrigin3D
 var head: XRCamera3D
 var left_hand: XRController3D
@@ -186,6 +186,14 @@ func attach_hud_overlays(ui) -> void:
 	_add_overlay(ui.take_info_panel(), DEBUG_PANEL_ANGLES, Vector2(-1.0, 1.0))
 
 
+func detach_hud_overlays() -> void:
+	for o: Dictionary in overlays:
+		var control: Control = o.control
+		control.resized.disconnect(_fit_overlay.bind(o))
+		control.visibility_changed.disconnect(_sync_overlay_visibility.bind(control, o.quad))
+	overlays.clear()
+
+
 # anchor: which point of the quad sits at the given angles, in quad half-extents (-1..1; x right, y up).
 func _add_overlay(control: Control, angles: Vector2, anchor: Vector2) -> void:
 	var vp := SubViewport.new()
@@ -212,9 +220,13 @@ func _add_overlay(control: Control, angles: Vector2, anchor: Vector2) -> void:
 	var o := {"control": control, "viewport": vp, "quad": quad, "angles": angles, "anchor": anchor}
 	overlays.append(o)
 	control.resized.connect(_fit_overlay.bind(o))
-	control.visibility_changed.connect(func(): quad.visible = control.visible)
+	control.visibility_changed.connect(_sync_overlay_visibility.bind(control, quad))
 	quad.visible = control.visible
 	_fit_overlay(o)
+
+
+func _sync_overlay_visibility(control: Control, quad: MeshInstance3D) -> void:
+	quad.visible = control.visible
 
 
 func _fit_overlay(o: Dictionary) -> void:
@@ -459,13 +471,14 @@ func poll(delta: float, paused: bool) -> Dictionary:
 	var trigger_down := right_aim.get_float("trigger") > 0.6
 	var trigger_just: bool = trigger_down and not _prev_buttons.get("trigger", false)
 	_prev_buttons["trigger"] = trigger_down
-	var menu := _just(left_hand, "menu_button")
+	var menu := _just(left_hand, "grip_click" if webxr else "menu_button")
 	var a := _just(right_grip, "ax_button")
 	var b := _just(right_grip, "by_button")
 	var x := _just(left_hand, "ax_button")
 	var y := _just(left_hand, "by_button")
-	var l3 := _just(left_hand, "primary_click")
-	var r3 := _just(right_grip, "primary_click")
+	var stick_click := "thumbstick_click" if webxr else "primary_click"
+	var l3 := _just(left_hand, stick_click)
+	var r3 := _just(right_grip, stick_click)
 	_update_pointer(trigger_down)
 
 	if paused:
@@ -476,8 +489,9 @@ func poll(delta: float, paused: bool) -> Dictionary:
 				game.ui.on_back_or_resume()
 		return {}
 
-	var move := _stick(left_hand.get_vector2("primary"))
-	var look := _stick(right_grip.get_vector2("primary"))
+	var stick := "thumbstick" if webxr else "primary"
+	var move := _stick(left_hand.get_vector2(stick))
+	var look := _stick(right_grip.get_vector2(stick))
 	if l3:
 		_sprint_toggle = not _sprint_toggle
 	if _sprint_toggle and move.length() < 0.05:

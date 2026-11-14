@@ -13,6 +13,9 @@ static var _asset_index_built: bool = false
 static func root() -> String:
 	if _root != "":
 		return _root
+	if OS.has_feature("web"):
+		_root = "res://"
+		return _root
 	var candidates: Array[String] = []
 	var res_root := ProjectSettings.globalize_path("res://")
 	if res_root != "":

@@ -99,6 +99,21 @@ static var _fallback: Texture2D = null
 static var _black: Texture2D = null
 
 
+static func instance_shader_code(code: String) -> String:
+	return code.replace("instance uniform ", "uniform ") if OS.has_feature("web") else code
+
+
+static func instance_material(mat: ShaderMaterial) -> ShaderMaterial:
+	return mat.duplicate() as ShaderMaterial if OS.has_feature("web") else mat
+
+
+static func set_instance_parameter(mesh: GeometryInstance3D, parameter: StringName, value: Variant) -> void:
+	if OS.has_feature("web"):
+		(mesh.material_override as ShaderMaterial).set_shader_parameter(parameter, value)
+	else:
+		mesh.set_instance_shader_parameter(parameter, value)
+
+
 static func get_shader(kind: String) -> Shader:
 	if _shaders.has(kind):
 		return _shaders[kind]
@@ -117,7 +132,7 @@ static func get_shader(kind: String) -> Shader:
 	if kind.begins_with("phong"):
 		code += PHONG_LIGHT
 	var sh := Shader.new()
-	sh.code = code
+	sh.code = instance_shader_code(code)
 	_shaders[kind] = sh
 	return sh
 

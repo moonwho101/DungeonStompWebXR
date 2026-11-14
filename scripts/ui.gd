@@ -78,6 +78,7 @@ var _btn_new: Button
 var _btn_resume: Button
 var _btn_generator: Button
 var _btn_options: Button
+var _btn_webxr: Button
 var _btn_generate: Button
 var _btn_gen_back: Button
 var _gen_size: HSlider
@@ -471,9 +472,16 @@ func _fit_hud() -> void:
 
 
 var _hud_detached := false
+var _detached_panels: Array[Dictionary] = []
 
 # The take_* functions move a HUD element out of the full-screen UI so VR can show it on its own panel.
 func _detach(c: Control) -> Control:
+	_detached_panels.append({
+		"control": c, "parent": c.get_parent(), "index": c.get_index(),
+		"anchors": [c.anchor_left, c.anchor_top, c.anchor_right, c.anchor_bottom],
+		"offsets": [c.offset_left, c.offset_top, c.offset_right, c.offset_bottom],
+		"scale": c.scale, "pivot": c.pivot_offset,
+	})
 	c.get_parent().remove_child(c)
 	c.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	c.position = Vector2.ZERO
@@ -495,6 +503,35 @@ func take_minimap() -> Control:
 
 func take_info_panel() -> PanelContainer:
 	return _detach(_info_panel)
+
+
+func restore_hud_panels() -> void:
+	for panel in _detached_panels:
+		var c: Control = panel.control
+		c.get_parent().remove_child(c)
+		var parent: Node = panel.parent
+		parent.add_child(c)
+		parent.move_child(c, mini(panel.index, parent.get_child_count() - 1))
+		c.anchor_left = panel.anchors[0]
+		c.anchor_top = panel.anchors[1]
+		c.anchor_right = panel.anchors[2]
+		c.anchor_bottom = panel.anchors[3]
+		c.offset_right = panel.offsets[2]
+		c.offset_bottom = panel.offsets[3]
+		c.offset_left = panel.offsets[0]
+		c.offset_top = panel.offsets[1]
+		c.scale = panel.scale
+		c.pivot_offset = panel.pivot
+	_detached_panels.clear()
+	_hud_detached = false
+	_fit_hud()
+
+
+func move_to_viewport(parent: Node) -> void:
+	get_viewport().size_changed.disconnect(_on_resize)
+	reparent(parent)
+	get_viewport().size_changed.connect(_on_resize)
+	_on_resize()
 
 
 # Shows/hides every HUD element: bottom bar, minimap, info panel and crosshair.
@@ -710,6 +747,11 @@ func _build_menu(root: Control) -> void:
 	_btn_options = _menu_button("Options")
 	for b in [_btn_new, _btn_resume, _btn_generator, _btn_options]:
 		main.add_child(b)
+	if OS.has_feature("web"):
+		_btn_webxr = _menu_button("Checking VR support...")
+		_btn_webxr.disabled = true
+		_btn_webxr.pressed.connect(func(): game.enter_webxr())
+		main.add_child(_btn_webxr)
 	_status = _label("", _font, 13, Color("#38bdf8"))
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	main.add_child(_status)
@@ -752,6 +794,9 @@ func _build_menu(root: Control) -> void:
 	opts.add_child(_h3("Options"))
 	_opt_normal = _checkbox("Normal Maps (N)")
 	_opt_music = _checkbox("Music (P / M)")
+	if OS.has_feature("web"):
+		_opt_music.text = "Music unavailable in web build"
+		_opt_music.disabled = true
 	_opt_vibration = _checkbox("Controller Vibration (Rumble)")
 	_opt_invert = _checkbox("Invert Look Y")
 	_opt_hud = _checkbox("Show Player HUD (H)")
@@ -916,6 +961,13 @@ func is_menu_visible() -> bool:
 
 func set_prompt(text: String) -> void:
 	_prompt.text = text
+
+
+func set_webxr_state(text: String, enabled: bool, show: bool = true) -> void:
+	if _btn_webxr != null:
+		_btn_webxr.text = text
+		_btn_webxr.disabled = not enabled
+		_btn_webxr.visible = show
 
 
 func set_status(text: String) -> void:

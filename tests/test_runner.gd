@@ -74,6 +74,8 @@ func _init() -> void:
 	check(wav != null and wav.data.size() > 0, "IMA-ADPCM wav decodes")
 
 	_xr_tests(models)
+	await process_frame
+	_xr_ui_transition_test()
 
 	TDSModel.clear_cache()
 	MD2Model.clear_cache()
@@ -81,6 +83,35 @@ func _init() -> void:
 
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL TESTS PASSED")
 	quit(1 if _failures > 0 else 0)
+
+
+func _xr_ui_transition_test() -> void:
+	var host := Node3D.new()
+	root.add_child(host)
+	var ui := GameUI.new()
+	host.add_child(ui)
+	var minimap := ui._minimap_box
+	var parent := minimap.get_parent()
+	var anchors := [minimap.anchor_left, minimap.anchor_top, minimap.anchor_right, minimap.anchor_bottom]
+	var offsets := [minimap.offset_left, minimap.offset_top, minimap.offset_right, minimap.offset_bottom]
+	for iteration in 2:
+		var rig := XRRig.new()
+		rig.simulated = true
+		host.add_child(rig)
+		ui.move_to_viewport(rig.ui_viewport)
+		rig.attach_hud_overlays(ui)
+		check(minimap.get_parent() != parent, "XR detaches HUD panels (%d)" % iteration)
+		rig.detach_hud_overlays()
+		ui.restore_hud_panels()
+		ui.move_to_viewport(host)
+		check(minimap.get_parent() == parent and
+			[minimap.anchor_left, minimap.anchor_top, minimap.anchor_right, minimap.anchor_bottom] == anchors and
+			[minimap.offset_left, minimap.offset_top, minimap.offset_right, minimap.offset_bottom] == offsets,
+			"XR restores desktop HUD layout (%d): %s %s" % [iteration,
+				[minimap.anchor_left, minimap.anchor_top, minimap.anchor_right, minimap.anchor_bottom],
+				[minimap.offset_left, minimap.offset_top, minimap.offset_right, minimap.offset_bottom]])
+		rig.free()
+	host.free()
 
 
 # VR logic that doesn't need a headset: fixed weapon pose, grip fit, swing detection and blade hits.

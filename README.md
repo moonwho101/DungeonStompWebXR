@@ -109,6 +109,32 @@ Copy the runtime data folders alongside the exported binary:
 cp -r Assets bin Sounds Midi build/windows/
 ```
 
+### WebXR and GitHub Pages
+
+The web build uses Godot's Compatibility renderer and requires a WebXR-capable browser,
+an active PC VR runtime and headset, and HTTPS (GitHub Pages provides HTTPS). Start the
+headset/runtime, open the site in the browser, and choose **Enter VR** on the main menu.
+The button reports when immersive VR is unavailable; exiting the headset session returns
+to the desktop menu. WebXR controller mappings can vary by device; left grip opens the
+menu in the web build.
+
+Export directly to `index.html`, rather than renaming the generated HTML:
+
+```powershell
+godot --headless --path . --export-release "Web" index.html
+```
+
+Commit and publish `index.html` and the accompanying `index.js`, `index.wasm`,
+`index.pck`, icons, and audio worklet files together. The enabled web data export plugin
+packages the raw `Assets/`, `bin/`, and `Sounds/` files that the runtime loaders need.
+Keep the plugin enabled when exporting. Music is omitted from the web build to keep the
+PCK below GitHub's 100 MB per-file limit; sound effects remain available. Native builds
+still use the music in `Midi/`.
+
+The browser's developer console can show loading and WebXR errors. A headset is required
+to validate immersive rendering and controller behavior; seeing the flat browser view
+alone does not mean a VR session has started.
+
 ### Running Automated Headless Tests
 
 Run the headless test suite to verify parsers, collision math, model loaders, and dungeon generation:
@@ -161,9 +187,9 @@ godot --headless --path . -s res://tests/test_runner.gd
 | **D-Pad Up** | Toggle music on/off |
 | **D-Pad Down** | Toggle normal mapping |
 
-### VR (OpenXR)
+### VR (OpenXR and WebXR)
 
-When an OpenXR runtime with a connected headset is available (SteamVR, Meta Quest Link, Windows Mixed Reality via SteamVR, etc.), the game starts in VR automatically. Without one it falls back to the desktop mode above. Pass `-- --no-xr` to force desktop mode.
+In native builds, when an OpenXR runtime with a connected headset is available (SteamVR, Meta Quest Link, Windows Mixed Reality via SteamVR, etc.), the game starts in VR automatically. Without one it falls back to the desktop mode above. Pass `-- --no-xr` to force desktop mode. On the web, choose **Enter VR** as described above.
 
 In VR the player weapon (an MD2 model) is drawn in one fixed pose, held in your right hand. It never plays its MD2 animations; your controller moves it. Melee weapons hit by **physically swinging** them into monsters (one hit per monster per swing). Spells fire from where the right controller points.
 
@@ -179,7 +205,7 @@ In VR the player weapon (an MD2 model) is drawn in one fixed pose, held in your 
 | **B** | Interact / open door / open chest (menu: back) |
 | **Y** / **Right Stick Click** | Next weapon or spell |
 | **X** | Previous weapon or spell |
-| **Left Menu Button** | Pause / resume |
+| **Left Menu Button** (native) / **Left Grip** (web) | Pause / resume |
 
 Menus appear on a panel floating in front of you. The HUD is laid out like a VR dungeon crawler: the debug/info panel sits in the upper-left of your view, the minimap in the upper-right, and the stat bar low in front of you. They follow your body (recentring only when you turn well away) and never move when the menu opens. Their angles are `DEBUG_PANEL_ANGLES`, `MINIMAP_ANGLES` and `STAT_BAR_ANGLES` in `scripts/xr_rig.gd`; the stat bar's size is `HUD_SCALE` in `scripts/ui.gd` (the same setting controls the desktop HUD size). Set `SHOW_DEBUG_PANEL` in `scripts/ui.gd` to `false` to remove the debug/info panel. Weapon fit (`WEAPON_*`), swing sensitivity (`SWING_*`), turn speed, and panel placement (`UI_*`, `OVERLAY_*`) are constants at the top of `scripts/xr_rig.gd`. For development without a headset, `-- --xr-simulate` builds the VR rig with fixed head and hand poses in the desktop window.
 
