@@ -471,7 +471,9 @@ func poll(delta: float, paused: bool) -> Dictionary:
 	var trigger_down := right_aim.get_float("trigger") > 0.6
 	var trigger_just: bool = trigger_down and not _prev_buttons.get("trigger", false)
 	_prev_buttons["trigger"] = trigger_down
-	var menu := _just(left_hand, "grip_click" if webxr else "menu_button")
+	var menu_down := left_hand.get_float("trigger") > 0.6
+	var menu: bool = menu_down and not _prev_buttons.get("left_trigger", false)
+	_prev_buttons["left_trigger"] = menu_down
 	var a := _just(right_grip, "ax_button")
 	var b := _just(right_grip, "by_button")
 	var x := _just(left_hand, "ax_button")

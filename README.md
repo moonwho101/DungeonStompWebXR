@@ -1,15 +1,15 @@
 <div align="center">
 
-# ⚔️ Dungeon Stomp (Godot 4.7.2)
+# ⚔️ Godot WebXR Dungeon Stomp
 
-### A classic 3D first-person dungeon crawler rebuilt natively for Godot Engine 4.7.2.
+### A classic 3D first-person dungeon crawler built with Godot 4.7.2 for the web and immersive WebXR VR.
 
-**Procedural Dungeons · Real-Time Combat · 30 Monster Families · Godot 4 Forward+ · Pure GDScript · Native Windows Desktop**
+**Procedural Dungeons · Real-Time Combat · 30 Monster Families · WebXR VR · Pure GDScript · Desktop & Headset Browsers**
 
 ![Godot Engine](https://img.shields.io/badge/Godot-4.7.2-478CBF?logo=godotengine&logoColor=white)
-![Platform](https://img.shields.io/badge/Platform-Windows%20x86__64-0078D7?logo=windows&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Web%20%2F%20WebXR-0078D7)
 ![Language](https://img.shields.io/badge/Language-Pure%20GDScript-478CBF?logo=godotengine&logoColor=white)
-![Renderer](https://img.shields.io/badge/Renderer-Forward%2B%203D-success)
+![Renderer](https://img.shields.io/badge/Web_Renderer-Compatibility-success)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 <br>
@@ -24,7 +24,7 @@
 
 ## 📖 Overview
 
-**Dungeon Stomp (Godot)** is a complete, native first-person 3D dungeon crawler built from the ground up for **Godot 4.7.2** using pure **GDScript**. It is a modern engine revival of the classic Direct3D dungeon crawler by [Mark Longo (moonwho101)](https://github.com/moonwho101), faithfully recreating the original gameplay, levels, models, textures, and sounds with modern engine capabilities.
+**Godot WebXR Dungeon Stomp** is a first-person 3D dungeon crawler built with **Godot 4.7.2** and pure **GDScript**, playable in desktop browsers and in immersive VR through **WebXR**, including Meta Browser on Quest headsets. Native Windows/OpenXR exports are also supported. It is a modern engine revival of the classic Direct3D dungeon crawler by [Mark Longo (moonwho101)](https://github.com/moonwho101), faithfully recreating the original gameplay, levels, models, textures, and sounds with modern engine capabilities.
 
 Everything runs natively in Godot with zero external plugin dependencies: original level maps, object definitions, Quake II MD2 animated meshes with GPU vertex interpolation, 3DS models, and sound tables are parsed directly at runtime.
 
@@ -38,10 +38,11 @@ Swing a flaming sword, hurl fireballs, cast lightning, and stomp through endless
 - ⚔️ **Real-Time Combat & Full Arsenal:** 10 distinct melee weapons (Axe, Flamesword, Bastard Sword, Battle Axe, Ice Sword, Lightning Sword, Morning Star, Spiked Flail, Split Sword, and Super Flamesword) with authentic first-person bobbing, swinging animations, and impact effects.
 - 🔮 **Spellcasting System:** Cast devastating real-time spells including **Magic Missile**, **Fireball**, **Lightning**, and **Healing** with physics-driven projectile trajectories and splash damage.
 - 🧟 **30 Monster Families:** Ogres, hydras, dragons, necromancers, demonesses, faeries, mummies, wraiths, goblins, skeletons, wolves, tentacle horrors, and more. Features state-machine AI with patrol, pursuit, melee attacks, and ranged spellcasting.
-- 💡 **Godot Forward+ 3D Rendering:** Dynamic lighting with flickering lamp glare, normal map support (`ds_normal_maps` shader global), particle effects for blood splatters and spell bursts, and atmospheric distance fog.
+- 💡 **Godot 3D Rendering:** Compatibility rendering for web/WebXR, with Forward+ available for native builds. Dynamic lighting with flickering lamp glare, normal map support (`ds_normal_maps` shader global), particle effects for blood splatters and spell bursts, and atmospheric distance fog.
 - 🧭 **Retro HUD & Radar Minimap:** Circular real-time radar minimap tracking surrounding walls, monsters, and loot. Polished HUD displaying health, XP, dungeon depth, kill counts, and active equipment.
 - 💾 **Persistent Adventure State:** Automatically saves run progress to `user://` — slain monsters, looted chests, unlocked doors, and player stats persist across sessions and depth transitions.
 - 🎮 **Full Input & Controller Support:** Native keyboard/mouse and gamepad support (Xbox, PlayStation DualSense/DualShock, Nintendo Switch Pro) with analog movement, stick aiming, haptics/rumble, and menu navigation.
+- 🥽 **Immersive WebXR VR:** Head tracking, controller-held weapons, physical swing melee, right-trigger spellcasting and menu selection, and left-trigger pause/menu control.
 
 ---
 
@@ -73,14 +74,15 @@ The game is written in pure GDScript and organized into modular engine subsystem
 ### Prerequisites
 
 - **[Godot Engine 4.7.2](https://godotengine.org/download)** (Standard 64-bit build recommended)
-- **Windows 10 / 11** (x86_64)
+- **Web play:** A modern browser; immersive VR requires a WebXR-capable browser and headset.
+- **Native Windows builds:** Windows 10 / 11 (x86_64).
 
 ### Running in the Godot Editor
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/moonwho101/DungeonStompGodot.git
-   cd DungeonStompGodot
+   git clone https://github.com/moonwho101/DungeonStompWebXR.git
+   cd DungeonStompWebXR
    ```
 2. Launch Godot 4.7.2 and click **Import**.
 3. Select the [project.godot](project.godot) file and choose **Import & Edit**.
@@ -88,7 +90,7 @@ The game is written in pure GDScript and organized into modular engine subsystem
 
 ### Running the Standalone Windows Executable
 
-The repository includes pre-built Windows desktop binaries:
+After exporting a Windows desktop build, run its generated binaries:
 
 - `DungeonStomp.exe` — The main game executable.
 - `DungeonStomp.console.exe` — Windows console wrapper for debugging and log output.
@@ -111,12 +113,13 @@ cp -r Assets bin Sounds Midi build/windows/
 
 ### WebXR and GitHub Pages
 
-The web build uses Godot's Compatibility renderer and requires a WebXR-capable browser,
-an active PC VR runtime and headset, and HTTPS (GitHub Pages provides HTTPS). Start the
-headset/runtime, open the site in the browser, and choose **Enter VR** on the main menu.
+The web build uses Godot's Compatibility renderer. Immersive VR requires a
+WebXR-capable browser and headset, and HTTPS (GitHub Pages provides HTTPS).
+Open the site directly in Meta Browser on a Quest headset, or use a supported PC
+browser with an active VR runtime and connected headset, then choose **Enter VR** on the main menu.
 The button reports when immersive VR is unavailable; exiting the headset session returns
-to the desktop menu. WebXR controller mappings can vary by device; left grip opens the
-menu in the web build.
+to the desktop menu. Pull the **left trigger** to open the VR menu; release it and pull
+again to resume or go back from a submenu. The side/grip button no longer opens the menu.
 
 Desktop menus, including the **Enter VR** button, render at three times their original
 size for readability. The web desktop menu uses scale-independent MSDF text so the
@@ -210,7 +213,7 @@ In VR the player weapon (an MD2 model) is drawn in one fixed pose, held in your 
 | **B** | Interact / open door / open chest (menu: back) |
 | **Y** / **Right Stick Click** | Next weapon or spell |
 | **X** | Previous weapon or spell |
-| **Left Menu Button** (native) / **Left Grip** (web) | Pause / resume |
+| **Left Trigger** (native and web) | Open menu / resume (submenu: back) |
 
 Menus appear on a panel floating in front of you. The HUD is laid out like a VR dungeon crawler: the debug/info panel sits in the upper-left of your view, the minimap in the upper-right, and the stat bar low in front of you. They follow your body (recentring only when you turn well away) and never move when the menu opens. Their angles are `DEBUG_PANEL_ANGLES`, `MINIMAP_ANGLES` and `STAT_BAR_ANGLES` in `scripts/xr_rig.gd`; the stat bar's size is `HUD_SCALE` in `scripts/ui.gd` (the same setting controls the desktop HUD size). Set `SHOW_DEBUG_PANEL` in `scripts/ui.gd` to `false` to remove the debug/info panel. Weapon fit (`WEAPON_*`), swing sensitivity (`SWING_*`), turn speed, and panel placement (`UI_*`, `OVERLAY_*`) are constants at the top of `scripts/xr_rig.gd`. For development without a headset, `-- --xr-simulate` builds the VR rig with fixed head and hand poses in the desktop window.
 
@@ -219,7 +222,7 @@ Menus appear on a panel floating in front of you. The HUD is laid out like a VR 
 ## 📁 Project Structure
 
 ```text
-DungeonStompGodot/
+DungeonStompWebXR/
 ├── Assets/                 # MD2 meshes, 3DS models, textures, and normal maps (.gdignore)
 ├── bin/                    # Classic level maps (.map), Objects.dat, modellist.dat, textures.dat
 ├── Midi/                   # Classic MIDI background soundtracks (.gdignore)
@@ -241,14 +244,17 @@ DungeonStompGodot/
 │   ├── parsers.gd          # Classic binary/text file format parsers
 │   ├── tds.gd              # 3D Studio (.3ds) mesh loader
 │   ├── ui.gd               # HUD, menus, and on-screen messages
-│   └── xr_rig.gd           # OpenXR VR rig, controller-held weapon, swing melee, VR UI panel
+│   └── xr_rig.gd           # WebXR/OpenXR VR rig, controller-held weapon, swing melee, VR UI panel
 ├── tests/
 │   └── test_runner.gd      # Headless automated test suite
 ├── tools/                  # Asset conversion and analysis utilities
 ├── verification/           # Verification scripts and screenshot captures
-├── export_presets.cfg      # Godot Windows Desktop export configuration
+├── export_presets.cfg      # Godot Web and Windows Desktop export configuration
 ├── project.godot           # Godot engine project configuration
-├── DungeonStomp.exe        # Pre-built Windows desktop binary
+├── index.html              # Browser entry point for the exported web game
+├── index.pck               # Exported game code and assets
+├── index.js                # Godot web loader
+├── index.wasm              # Godot WebAssembly runtime
 └── README.md
 ```
 

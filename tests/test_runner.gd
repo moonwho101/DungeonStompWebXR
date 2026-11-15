@@ -4,6 +4,17 @@ extends SceneTree
 var _failures := 0
 
 
+class TestXRMenu:
+	var visible := false
+	var back_count := 0
+
+	func is_menu_visible() -> bool:
+		return visible
+
+	func on_back_or_resume() -> void:
+		back_count += 1
+
+
 func check(cond: bool, msg: String) -> void:
 	if cond:
 		print("  ok   ", msg)
@@ -76,6 +87,7 @@ func _init() -> void:
 	_xr_tests(models)
 	await process_frame
 	await _xr_ui_transition_test()
+	_xr_menu_input_test()
 
 	TDSModel.clear_cache()
 	MD2Model.clear_cache()
@@ -149,6 +161,43 @@ func _xr_ui_transition_test() -> void:
 				[minimap.offset_left, minimap.offset_top, minimap.offset_right, minimap.offset_bottom]])
 		rig.free()
 	host.free()
+
+
+func _xr_menu_input_test() -> void:
+	var tracker := XRControllerTracker.new()
+	tracker.type = XRServer.TRACKER_CONTROLLER
+	tracker.name = &"test_left_hand"
+	XRServer.add_tracker(tracker)
+	var rig := XRRig.new()
+	rig.simulated = true
+	var menu := TestXRMenu.new()
+	rig.game = {"ui": menu, "world_ready": true, "fly_mode": false}
+	root.add_child(rig)
+	rig.left_hand.tracker = tracker.name
+	for web in [false, true]:
+		rig.webxr = web
+		rig._prev_buttons.clear()
+		menu.visible = false
+		tracker.set_input("trigger", 0.5)
+		check(not rig.poll(0.016, false).pause_toggle, "VR menu ignores a partial left trigger pull (web=%s)" % web)
+		tracker.set_input("trigger", 1.0)
+		check(rig.poll(0.016, false).pause_toggle, "Left trigger opens VR menu (web=%s)" % web)
+		check(not rig.poll(0.016, false).pause_toggle, "Holding left trigger does not toggle repeatedly (web=%s)" % web)
+		tracker.set_input("trigger", 0.0)
+		tracker.set_input("grip_click", true)
+		tracker.set_input("menu_button", true)
+		check(not rig.poll(0.016, false).pause_toggle, "Side/menu buttons no longer open VR menu (web=%s)" % web)
+		menu.visible = true
+		var previous_count := menu.back_count
+		tracker.set_input("trigger", 1.0)
+		rig.poll(0.016, true)
+		rig.poll(0.016, true)
+		check(menu.back_count == previous_count + 1, "Left trigger resumes/goes back once while paused (web=%s)" % web)
+		tracker.set_input("trigger", 0.0)
+		tracker.set_input("grip_click", false)
+		tracker.set_input("menu_button", false)
+	rig.free()
+	XRServer.remove_tracker(tracker)
 
 
 # VR logic that doesn't need a headset: fixed weapon pose, grip fit, swing detection and blade hits.
