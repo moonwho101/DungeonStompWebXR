@@ -4,6 +4,7 @@ extends CanvasLayer
 
 const AMBER := Color("#f59e0b")
 const SHOW_DEBUG_PANEL := false # top-left info panel (mode, position, depth, objects); set false to hide it
+const DESKTOP_MENU_SCALE := 3.0
 
 const VIGNETTE_SHADER := """
 shader_type canvas_item;
@@ -159,6 +160,7 @@ func _on_resize() -> void:
 	var vs := get_viewport().get_visible_rect().size
 	_flash_mat.set_shader_parameter("rect_size", vs)
 	_fit_hud()
+	_fit_menu()
 
 
 # ---------------------------------------------------------------- Overlays
@@ -623,6 +625,14 @@ func _set_fill(fill: ColorRect, pct: float) -> void:
 
 # ---------------------------------------------------------------- Menu
 
+func _fit_menu() -> void:
+	if _menu == null:
+		return
+	_menu.pivot_offset = _menu.size * 0.5
+	var menu_scale := 1.0 if get_viewport() is SubViewport else DESKTOP_MENU_SCALE
+	_menu.scale = Vector2.ONE * menu_scale
+
+
 func _menu_button(text: String, primary: bool = false) -> Button:
 	var b := Button.new()
 	b.text = text.to_upper()
@@ -725,6 +735,7 @@ func _build_menu(root: Control) -> void:
 	_menu.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_menu.mouse_filter = Control.MOUSE_FILTER_STOP
 	_menu.gui_input.connect(_on_menu_gui_input)
+	_menu.resized.connect(_fit_menu)
 	root.add_child(_menu)
 	var outer := VBoxContainer.new()
 	outer.add_theme_constant_override("separation", 10)

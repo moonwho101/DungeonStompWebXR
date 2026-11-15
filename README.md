@@ -118,6 +118,9 @@ The button reports when immersive VR is unavailable; exiting the headset session
 to the desktop menu. WebXR controller mappings can vary by device; left grip opens the
 menu in the web build.
 
+Desktop menus, including the **Enter VR** button, render at three times their original
+size for readability. In-headset VR menus retain their original size.
+
 Export directly to `index.html`, rather than renaming the generated HTML:
 
 ```powershell

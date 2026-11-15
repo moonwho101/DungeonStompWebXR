@@ -75,7 +75,7 @@ func _init() -> void:
 
 	_xr_tests(models)
 	await process_frame
-	_xr_ui_transition_test()
+	await _xr_ui_transition_test()
 
 	TDSModel.clear_cache()
 	MD2Model.clear_cache()
@@ -90,6 +90,15 @@ func _xr_ui_transition_test() -> void:
 	root.add_child(host)
 	var ui := GameUI.new()
 	host.add_child(ui)
+	await process_frame
+	await process_frame
+	var menu_size := ui._menu.size
+	var button_size := ui._btn_new.size
+	check(ui._menu.get_global_rect().size.is_equal_approx(menu_size * 3.0) and
+		ui._btn_new.get_global_rect().size.is_equal_approx(button_size * 3.0),
+		"Desktop menu and buttons render at three times their original size")
+	check(ui._menu.get_global_rect().get_center().is_equal_approx(root.get_visible_rect().size * 0.5),
+		"Enlarged desktop menu stays centered")
 	var minimap := ui._minimap_box
 	var parent := minimap.get_parent()
 	var anchors := [minimap.anchor_left, minimap.anchor_top, minimap.anchor_right, minimap.anchor_bottom]
@@ -100,10 +109,20 @@ func _xr_ui_transition_test() -> void:
 		host.add_child(rig)
 		ui.move_to_viewport(rig.ui_viewport)
 		rig.attach_hud_overlays(ui)
+		await process_frame
+		await process_frame
+		check(ui._menu.scale == Vector2.ONE and
+			ui._btn_new.get_global_rect().size.is_equal_approx(button_size),
+			"VR menu and buttons retain their original size (%d)" % iteration)
 		check(minimap.get_parent() != parent, "XR detaches HUD panels (%d)" % iteration)
 		rig.detach_hud_overlays()
 		ui.restore_hud_panels()
 		ui.move_to_viewport(host)
+		await process_frame
+		await process_frame
+		check(ui._menu.get_global_rect().size.is_equal_approx(menu_size * 3.0) and
+			ui._btn_new.get_global_rect().size.is_equal_approx(button_size * 3.0),
+			"Exiting VR restores the enlarged desktop menu (%d)" % iteration)
 		check(minimap.get_parent() == parent and
 			[minimap.anchor_left, minimap.anchor_top, minimap.anchor_right, minimap.anchor_bottom] == anchors and
 			[minimap.offset_left, minimap.offset_top, minimap.offset_right, minimap.offset_bottom] == offsets,
