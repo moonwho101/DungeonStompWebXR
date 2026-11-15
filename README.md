@@ -143,6 +143,14 @@ The browser's developer console can show loading and WebXR errors. A headset is 
 to validate immersive rendering and controller behavior; seeing the flat browser view
 alone does not mean a VR session has started.
 
+### Sustained-play performance
+
+Spell/portal particles and blood use fixed-capacity pools with live effects packed
+into contiguous slots. Expired effects are removed from simulation and drawing
+immediately, so exploring and fighting do not accumulate empty render instances.
+This is especially important in WebXR, where effects are rendered for both eyes.
+The headless tests cover repeated bursts beyond pool capacity and blood-trail saturation.
+
 ### Running Automated Headless Tests
 
 Run the headless test suite to verify parsers, collision math, model loaders, and dungeon generation:

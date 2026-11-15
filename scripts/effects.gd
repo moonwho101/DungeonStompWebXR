@@ -152,7 +152,6 @@ var _p_size := PackedFloat32Array()
 var _p_age := PackedFloat32Array()
 var _p_life := PackedFloat32Array()
 var _p_next := 0
-var _p_high := 0
 var _p_alive := 0
 var _p_mm: MultiMesh
 var _p_buf := PackedFloat32Array()
@@ -172,7 +171,6 @@ var _b_growth := PackedFloat32Array()
 var _b_floor := PackedFloat32Array()
 var _b_trail := PackedByteArray()
 var _b_next := 0
-var _b_high := 0
 var _b_alive := 0
 var _b_mm: MultiMesh
 var _b_buf := PackedFloat32Array()
@@ -482,15 +480,8 @@ func _init_particles() -> void:
 
 
 func emit_particle(x: float, y: float, z: float, vx: float, vy: float, vz: float, color_hex: int, size: float, life: float) -> void:
-	var slot := -1
-	for n in MAX_PARTICLES:
-		var c := (_p_next + n) % MAX_PARTICLES
-		if _p_life[c] <= 0.0:
-			slot = c
-			break
-	if slot == -1:
-		slot = _p_next
-		_p_alive -= 1
+	var slot := _p_alive if _p_alive < MAX_PARTICLES else _p_next
+	_p_alive = mini(_p_alive + 1, MAX_PARTICLES)
 	_p_next = (slot + 1) % MAX_PARTICLES
 	_p_pos[slot] = Vector3(x, y, z)
 	_p_vel[slot] = Vector3(vx, vy, vz)
@@ -498,33 +489,24 @@ func emit_particle(x: float, y: float, z: float, vx: float, vy: float, vz: float
 	_p_size[slot] = size
 	_p_age[slot] = 0.0
 	_p_life[slot] = life
-	_p_alive += 1
-	if slot >= _p_high:
-		_p_high = slot + 1
 
 
 func _update_particles(delta: float) -> void:
 	if _p_alive <= 0:
-		if _p_high != 0:
-			_p_high = 0
-			_p_mm.visible_instance_count = 0
+		_p_mm.visible_instance_count = 0
 		return
-	var buf := _p_buf
-	for i in _p_high:
-		var o := i * 16
+	# Keep live particles in a dense prefix; expired slots must not accumulate CPU/GPU work.
+	for i in range(_p_alive - 1, -1, -1):
 		var life := _p_life[i]
-		if life <= 0.0:
-			buf[o] = 0.0
-			buf[o + 5] = 0.0
-			buf[o + 10] = 0.0
-			continue
 		var age := _p_age[i] + delta
 		if age >= life:
-			_p_life[i] = 0.0
 			_p_alive -= 1
-			buf[o] = 0.0
-			buf[o + 5] = 0.0
-			buf[o + 10] = 0.0
+			_p_pos[i] = _p_pos[_p_alive]
+			_p_vel[i] = _p_vel[_p_alive]
+			_p_base[i] = _p_base[_p_alive]
+			_p_size[i] = _p_size[_p_alive]
+			_p_age[i] = _p_age[_p_alive]
+			_p_life[i] = _p_life[_p_alive]
 			continue
 		_p_age[i] = age
 		var v := _p_vel[i]
@@ -532,7 +514,11 @@ func _update_particles(delta: float) -> void:
 		_p_pos[i] = p
 		v.y -= PARTICLE_GRAVITY * delta
 		_p_vel[i] = v
-		var fade := 1.0 - age / life
+	var buf := _p_buf
+	for i in _p_alive:
+		var o := i * 16
+		var p := _p_pos[i]
+		var fade := 1.0 - _p_age[i] / _p_life[i]
 		var c := _p_base[i]
 		var s := _p_size[i] * POINT_TO_WORLD
 		buf[o] = s; buf[o + 1] = 0.0; buf[o + 2] = 0.0; buf[o + 3] = p.x
@@ -541,7 +527,7 @@ func _update_particles(delta: float) -> void:
 		buf[o + 12] = c.r * fade; buf[o + 13] = c.g * fade; buf[o + 14] = c.b * fade; buf[o + 15] = 1.0
 	_p_buf = buf
 	RenderingServer.multimesh_set_buffer(_p_mm.get_rid(), _p_buf)
-	_p_mm.visible_instance_count = _p_high
+	_p_mm.visible_instance_count = _p_alive
 
 
 func create_treasure_drop_effect(pos: Vector3) -> void:
@@ -584,15 +570,8 @@ func _init_blood() -> void:
 
 func _emit_blood(x: float, y: float, z: float, vx: float, vy: float, vz: float, r: float, g: float, b: float, a: float,
 		size: float, life: float, gravity: float, drag: float, growth: float, soft: float, floor_y: float, trail: bool) -> void:
-	var slot := -1
-	for n in MAX_BLOOD:
-		var c := (_b_next + n) % MAX_BLOOD
-		if _b_life[c] <= 0.0:
-			slot = c
-			break
-	if slot == -1:
-		slot = _b_next
-		_b_alive -= 1
+	var slot := _b_alive if _b_alive < MAX_BLOOD else _b_next
+	_b_alive = mini(_b_alive + 1, MAX_BLOOD)
 	_b_next = (slot + 1) % MAX_BLOOD
 	_b_pos[slot] = Vector3(x, y, z)
 	_b_vel[slot] = Vector3(vx, vy, vz)
@@ -607,9 +586,6 @@ func _emit_blood(x: float, y: float, z: float, vx: float, vy: float, vz: float, 
 	_b_growth[slot] = growth
 	_b_floor[slot] = floor_y
 	_b_trail[slot] = 1 if trail else 0
-	_b_alive += 1
-	if slot >= _b_high:
-		_b_high = slot + 1
 
 
 func _blood_decal_texture(seed: int) -> ImageTexture:
@@ -806,21 +782,13 @@ func _update_blood_decals(delta: float) -> void:
 func _update_blood(delta: float) -> void:
 	_update_blood_decals(delta)
 	if _b_alive <= 0:
-		if _b_high != 0:
-			_b_high = 0
-			_b_mm.visible_instance_count = 0
+		_b_mm.visible_instance_count = 0
 		return
-	var high := _b_high
-	for i in high:
+	for i in range(_b_alive - 1, -1, -1):
 		var life := _b_life[i]
-		if life <= 0.0:
-			_b_size[i] = 0.0
-			continue
 		var age := _b_age[i] + delta
 		if age >= life:
-			_b_life[i] = 0.0
-			_b_size[i] = 0.0
-			_b_alive -= 1
+			_remove_blood(i)
 			continue
 		_b_age[i] = age
 		var t := age / life
@@ -834,6 +802,7 @@ func _update_blood(delta: float) -> void:
 		var p := _b_pos[i] + v * delta
 		_b_pos[i] = p
 		var c := _b_col[i]
+		var spawn_trail := false
 		if is_mist:
 			_b_size[i] = _b_base[i] * (1.0 + _b_growth[i] * t)
 			c.a *= 1.0 - minf(1.0, delta * 1.6 / (1.0 - t + 0.2))
@@ -842,23 +811,19 @@ func _update_blood(delta: float) -> void:
 				var base_size := _b_base[i]
 				if base_size > 2.0 or randf() < 0.25:
 					_spawn_blood_decal(p.x, _b_floor[i], p.z, 7.0 + base_size * 5.0 + randf() * 8.0, 0.1)
-				_b_life[i] = 0.0
-				_b_size[i] = 0.0
-				_b_alive -= 1
+				_remove_blood(i)
 				continue
-			if _b_trail[i] == 1 and t < 0.4 and randf() < 0.55:
-				_emit_blood(p.x, p.y, p.z, v.x * 0.15, v.y * 0.15, v.z * 0.15, c.r, c.g, c.b, 0.9,
-					_b_base[i] * 0.45, 0.35, BLOOD_GRAVITY * 0.4, 1.5, 0.0, 0.0, _b_floor[i], false)
+			spawn_trail = _b_trail[i] == 1 and t < 0.4 and randf() < 0.55
 			if t > 0.85:
 				c.a = (1.0 - t) / 0.15
 		_b_col[i] = c
-	high = _b_high
+		if spawn_trail:
+			_emit_blood(p.x, p.y, p.z, v.x * 0.15, v.y * 0.15, v.z * 0.15, c.r, c.g, c.b, 0.9,
+				_b_base[i] * 0.45, 0.35, BLOOD_GRAVITY * 0.4, 1.5, 0.0, 0.0, _b_floor[i], false)
 	var buf := _b_buf
-	for i in high:
+	for i in _b_alive:
 		var o := i * 20
-		var s := 0.0
-		if _b_life[i] > 0.0:
-			s = _b_size[i] * POINT_TO_WORLD
+		var s := _b_size[i] * POINT_TO_WORLD
 		var p := _b_pos[i]
 		var c := _b_col[i]
 		buf[o] = s; buf[o + 1] = 0.0; buf[o + 2] = 0.0; buf[o + 3] = p.x
@@ -868,7 +833,24 @@ func _update_blood(delta: float) -> void:
 		buf[o + 16] = _b_soft[i]; buf[o + 17] = 0.0; buf[o + 18] = 0.0; buf[o + 19] = 0.0
 	_b_buf = buf
 	RenderingServer.multimesh_set_buffer(_b_mm.get_rid(), _b_buf)
-	_b_mm.visible_instance_count = high
+	_b_mm.visible_instance_count = _b_alive
+
+
+func _remove_blood(i: int) -> void:
+	_b_alive -= 1
+	_b_pos[i] = _b_pos[_b_alive]
+	_b_vel[i] = _b_vel[_b_alive]
+	_b_col[i] = _b_col[_b_alive]
+	_b_size[i] = _b_size[_b_alive]
+	_b_base[i] = _b_base[_b_alive]
+	_b_soft[i] = _b_soft[_b_alive]
+	_b_age[i] = _b_age[_b_alive]
+	_b_life[i] = _b_life[_b_alive]
+	_b_grav[i] = _b_grav[_b_alive]
+	_b_drag[i] = _b_drag[_b_alive]
+	_b_growth[i] = _b_growth[_b_alive]
+	_b_floor[i] = _b_floor[_b_alive]
+	_b_trail[i] = _b_trail[_b_alive]
 
 
 func clear_blood() -> void:
@@ -876,7 +858,7 @@ func clear_blood() -> void:
 		_b_life[i] = 0.0
 		_b_size[i] = 0.0
 	_b_alive = 0
-	_b_high = 0
+	_b_next = 0
 	_b_mm.visible_instance_count = 0
 	for d: Dictionary in _decals:
 		d.active = false

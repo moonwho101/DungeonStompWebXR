@@ -88,6 +88,7 @@ func _init() -> void:
 	await process_frame
 	await _xr_ui_transition_test()
 	_xr_menu_input_test()
+	_effects_pool_test()
 
 	TDSModel.clear_cache()
 	MD2Model.clear_cache()
@@ -161,6 +162,58 @@ func _xr_ui_transition_test() -> void:
 				[minimap.offset_left, minimap.offset_top, minimap.offset_right, minimap.offset_bottom]])
 		rig.free()
 	host.free()
+
+
+func _effects_pool_test() -> void:
+	var fx := Effects.new()
+	root.add_child(fx)
+	fx.emit_particle(0, 0, 0, 0, 0, 0, 0xffffff, 1, 0.01)
+	fx.emit_particle(10, 100, 20, 5, 0, 0, 0xff0000, 7, 1000)
+	fx._update_particles(0.02)
+	check(fx._p_alive == 1 and fx._p_mm.visible_instance_count == 1 and
+		is_equal_approx(fx._p_pos[0].x, 10.1) and fx._p_size[0] == 7 and fx._p_life[0] == 1000,
+		"Expired particles compact without losing the surviving particle's state")
+	var stable_particles := true
+	for burst in 200:
+		for i in 40:
+			fx.emit_particle(0, 0, 0, 0, 0, 0, 0xffffff, 1, 0.01)
+		fx._update_particles(0.02)
+		stable_particles = stable_particles and fx._p_alive == 1 and fx._p_mm.visible_instance_count == 1
+	check(stable_particles, "8000 expired particles add no persistent simulation/render slots")
+	for i in Effects.MAX_PARTICLES + 100:
+		fx.emit_particle(0, 0, 0, 0, 0, 0, 0xffffff, 1, 0.1)
+	fx._update_particles(0.02)
+	check(fx._p_alive == Effects.MAX_PARTICLES and fx._p_mm.visible_instance_count == Effects.MAX_PARTICLES,
+		"Particle saturation remains capped")
+	fx._update_particles(0.2)
+	check(fx._p_alive == 0 and fx._p_mm.visible_instance_count == 0, "Expired particle pool stops drawing immediately")
+
+	_emit_test_blood(fx, 0, 0.01)
+	_emit_test_blood(fx, 10, 1000)
+	fx._update_blood(0.02)
+	check(fx._b_alive == 1 and fx._b_mm.visible_instance_count == 1 and
+		is_equal_approx(fx._b_pos[0].x, 10.1) and fx._b_base[0] == 7 and fx._b_life[0] == 1000,
+		"Expired blood compacts without losing the surviving droplet's state")
+	var stable_blood := true
+	for burst in 200:
+		for i in 40:
+			_emit_test_blood(fx, 0, 0.01)
+		fx._update_blood(0.02)
+		stable_blood = stable_blood and fx._b_alive == 1 and fx._b_mm.visible_instance_count == 1
+	check(stable_blood, "8000 expired blood droplets add no persistent simulation/render slots")
+	fx.clear_blood()
+	for i in Effects.MAX_BLOOD + 100:
+		fx._emit_blood(0, 1000, 0, 0, 0, 0, 1, 0, 0, 1, 7, 0.1, 0, 0, 0, 0, -10000, true)
+	fx._update_blood(0.02)
+	check(fx._b_alive <= Effects.MAX_BLOOD and fx._b_mm.visible_instance_count == fx._b_alive,
+		"Blood trails remain capped and densely rendered even at saturation")
+	fx._update_blood(0.5)
+	check(fx._b_alive == 0 and fx._b_mm.visible_instance_count == 0, "Blood and its trails expire without leftover render slots")
+	fx.free()
+
+
+func _emit_test_blood(fx: Effects, x: float, life: float) -> void:
+	fx._emit_blood(x, 1000, 0, 5, 0, 0, 1, 0, 0, 1, 7, life, 0, 0, 0, 1, -10000, false)
 
 
 func _xr_menu_input_test() -> void:
