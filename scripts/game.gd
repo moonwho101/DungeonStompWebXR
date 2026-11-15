@@ -56,6 +56,7 @@ const PLAYER_RESPAWN_DELAY := 3.0
 const PICKUP_DISTANCE := 70.0
 const MOUSE_SENSITIVITY := 0.002
 const AUTOSAVE_INTERVAL := 5.0
+const WORLD_FALL_MARGIN := 1000.0
 
 const SAVE_KEY := "dungeonRunState"
 const GEN_OPTS_KEY := "dungeonGenerationOptions"
@@ -105,6 +106,7 @@ var player_stats := {"health": 100.0, "maxHealth": 100, "level": 1, "xp": 0, "ne
 var player_dead := false
 var player_death_timer := 0.0
 var player_start_pos := Vector3.ZERO
+var world_fall_y := -WORLD_FALL_MARGIN
 var is_invincible := false
 var unlocked_weapons: Array = DEFAULT_WEAPONS.duplicate()
 var spell_counts := {"MAGIC MISSILE": 5, "FIREBALL": 5, "LIGHTNING": 5, "HEALING": 5}
@@ -925,6 +927,7 @@ func _build_game_world(override_map_text: String) -> void:
 		door.bounds_max = mx
 		collision.doors.append(door)
 
+	_update_world_fall_threshold()
 	ui.set_info("obj", str(built_object_count))
 	ui.set_info("light", str(light_count))
 	ui.set_info("depth", str(dungeon_depth))
@@ -1319,6 +1322,25 @@ func _on_key_up(key: int) -> void:
 
 # ---------------------------------------------------------------- Frame loop
 
+func _update_world_fall_threshold() -> void:
+	var lowest_y := player_start_pos.y - CollisionWorld.EYE_HEIGHT
+	for p: Vector3 in collision.tmin:
+		lowest_y = minf(lowest_y, p.y)
+	for box: CollisionWorld.Box in collision.boxes:
+		if not box.is_empty():
+			lowest_y = minf(lowest_y, box.min.y)
+	world_fall_y = lowest_y - WORLD_FALL_MARGIN
+
+
+func _recover_player_from_fall() -> void:
+	if camera.position.y >= world_fall_y:
+		return
+	camera.position = player_start_pos
+	velocity = Vector3.ZERO
+	is_grounded = false
+	jump_requested = false
+
+
 func _process(delta: float) -> void:
 	_handle_screenshot(delta)
 	var paused := is_paused()
@@ -1396,6 +1418,7 @@ func _process(delta: float) -> void:
 
 
 func _update_player_movement(delta: float, gp: Dictionary) -> void:
+	_recover_player_from_fall()
 	var sprint := is_sprinting or bool(gp.get("sprint", false))
 	var move_speed := 400.0 if sprint else 200.0
 	var gmx: float = gp.get("move_x", 0.0)
@@ -1414,6 +1437,7 @@ func _update_player_movement(delta: float, gp: Dictionary) -> void:
 		if move_down or gp.get("fly_down", false):
 			velocity.y -= move_speed * 8.0 * delta
 		camera.position += velocity * delta
+		_recover_player_from_fall()
 		return
 
 	var damp_xz := pow(0.001, delta)
@@ -1458,6 +1482,7 @@ func _update_player_movement(delta: float, gp: Dictionary) -> void:
 		grounded = g or grounded
 	camera.position = pos
 	is_grounded = grounded
+	_recover_player_from_fall()
 
 	if is_grounded and (move_forward or move_backward or move_left or move_right or dir_len > 0.1):
 		if velocity.x * velocity.x + velocity.z * velocity.z > 400.0:

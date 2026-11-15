@@ -402,6 +402,8 @@ func _resolve(with_others: bool, player_pos: Vector3) -> void:
 
 
 func update(delta: float, player_pos: Vector3) -> void:
+	if position.y < game.world_fall_y:
+		_recover_from_fall()
 	var dt := minf(delta, 0.1)
 	var dx := player_pos.x - position.x
 	var dz := player_pos.z - position.z
@@ -432,8 +434,18 @@ func update(delta: float, player_pos: Vector3) -> void:
 		velocity.y -= 1600.0 * sub_dt
 		position.y += velocity.y * sub_dt
 		_resolve(false, player_pos)
+		if position.y < game.world_fall_y:
+			_recover_from_fall()
+			break
 		if is_grounded:
 			break
+
+	dx = player_pos.x - position.x
+	dz = player_pos.z - position.z
+	dist = sqrt(dx * dx + dz * dz)
+	# Compare actor feet: the player position is eye height, not the monster's origin.
+	var player_at_monster_height := player_pos + Vector3(0, CollisionWorld.MONSTER_FOOT_OFFSET - CollisionWorld.EYE_HEIGHT, 0)
+	var attack_dist := position.distance_to(player_at_monster_height)
 
 	if state == State.DEATH:
 		mesh.position = position
@@ -459,6 +471,12 @@ func update(delta: float, player_pos: Vector3) -> void:
 			has_los = game.collision.has_line_of_sight(position + Vector3(0, 40, 0), player_pos + Vector3(0, 20, 0))
 		los = has_los
 
+	if state == State.ATTACK:
+		var reach: float = config.attackRange if not is_melee_attack else 135.0
+		if attack_dist > reach:
+			pending_spell = ""
+			set_state(State.CHASE)
+
 	match state:
 		State.IDLE:
 			set_animation(ANIMS.STAND)
@@ -469,13 +487,13 @@ func update(delta: float, player_pos: Vector3) -> void:
 			_smooth_turn(target_angle, dt)
 			if dist > config.deaggroRadius:
 				set_state(State.IDLE)
-			elif dist <= config.attackRange and los:
+			elif attack_dist <= config.attackRange and los:
 				set_state(State.ATTACK)
 			elif state_timer >= config.alertDuration:
 				set_state(State.CHASE)
 		State.CHASE:
 			_smooth_turn(target_angle, dt)
-			if dist <= config.attackRange and los:
+			if attack_dist <= config.attackRange and los:
 				if attack_cooldown <= 0.0:
 					set_state(State.ATTACK)
 				elif config.canCastSpells:
@@ -514,7 +532,7 @@ func update(delta: float, player_pos: Vector3) -> void:
 						var ws: String = config.get("weaponSound", "swish4.wav")
 						if dist <= 1200.0:
 							game.audio.play_sound(ws, maxf(0.05, (1.0 - dist / 1200.0) * 0.7))
-						if dist <= 115.0 + 20.0:
+						if attack_dist <= 115.0 + 20.0:
 							game.damage_player(config.damage)
 			if anim_complete:
 				attack_cooldown = config.spellCooldown if config.spellCooldown > 0.0 else 0.5
@@ -528,6 +546,23 @@ func update(delta: float, player_pos: Vector3) -> void:
 	_sync_transforms()
 	_update_morph_targets(dt)
 	_update_bounding_box()
+
+
+func _recover_from_fall() -> void:
+	position = game.player_start_pos + Vector3(0, CollisionWorld.MONSTER_FOOT_OFFSET - CollisionWorld.EYE_HEIGHT, 0)
+	velocity = Vector3.ZERO
+	is_grounded = false
+	has_los = false
+	los_timer = 0.0
+	has_dealt_damage = false
+	pending_spell = ""
+	set_state(State.IDLE)
+	if state != State.DEATH:
+		set_animation(ANIMS.STAND, true)
+	_sync_transforms()
+	_update_bounding_box()
+	if hp_bar != null:
+		hp_bar.position = position + Vector3(0, health_bar_height, 0)
 
 
 func _tactical_movement(dt: float, dist: float, player_pos: Vector3) -> void:
@@ -579,7 +614,7 @@ func set_state(new_state: int) -> void:
 	var player_pos: Vector3 = game.player_position()
 	if new_state == State.ATTACK:
 		has_dealt_damage = false
-		var d := position.distance_to(player_pos)
+		var d := position.distance_to(player_pos + Vector3(0, CollisionWorld.MONSTER_FOOT_OFFSET - CollisionWorld.EYE_HEIGHT, 0))
 		if config.canCastSpells and d <= 115.0:
 			is_melee_attack = true
 			pending_spell = ""

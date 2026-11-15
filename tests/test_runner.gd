@@ -4,6 +4,28 @@ extends SceneTree
 var _failures := 0
 
 
+class TestCombatAudio extends AudioManager:
+	func play_sound(_filename: String, _volume: float = 1.0) -> void:
+		pass
+
+
+class TestFallGame extends Game:
+	var damage_taken := 0.0
+	var spells_launched := 0
+
+	func _ready() -> void:
+		set_process(false)
+
+	func _exit_tree() -> void:
+		pass
+
+	func damage_player(amount: float) -> void:
+		damage_taken += amount
+
+	func launch_monster_projectile(_monster: Monster, _type: String, _target_pos: Vector3) -> void:
+		spells_launched += 1
+
+
 class TestXRMenu:
 	var visible := false
 	var back_count := 0
@@ -89,6 +111,7 @@ func _init() -> void:
 	await _xr_ui_transition_test()
 	_xr_menu_input_test()
 	_effects_pool_test()
+	_fall_and_attack_test(md2)
 
 	TDSModel.clear_cache()
 	MD2Model.clear_cache()
@@ -96,6 +119,112 @@ func _init() -> void:
 
 	print("FAILED: %d" % _failures if _failures > 0 else "ALL TESTS PASSED")
 	quit(1 if _failures > 0 else 0)
+
+
+func _fall_and_attack_test(model: MD2Model) -> void:
+	var game := TestFallGame.new()
+	root.add_child(game)
+	game.camera = Camera3D.new()
+	game.add_child(game.camera)
+	game.world_root = Node3D.new()
+	game.add_child(game.world_root)
+	game.audio = TestCombatAudio.new()
+	game.add_child(game.audio)
+	game.fx = Effects.new()
+	game.add_child(game.fx)
+	game.player_start_pos = Vector3(100, 128, 200)
+	game.collision.add_triangle(Vector3(0, -500, 0), Vector3(0, -500, 100), Vector3(100, -500, 0))
+	game._update_world_fall_threshold()
+	check(game.world_fall_y == -1500.0, "Fall cutoff includes lower map geometry")
+	game.camera.position = Vector3(0, game.world_fall_y, 0)
+	game._recover_player_from_fall()
+	check(game.camera.position.y == game.world_fall_y, "Fall recovery triggers strictly below cutoff")
+	game.collision.clear()
+	game._update_world_fall_threshold()
+	check(game.world_fall_y == -972.0, "New map resets cutoff using start height when geometry is empty")
+	game.player_stats.health = 37.0
+	game.fly_mode = true
+	game.camera.position = Vector3(0, game.world_fall_y - 1, 0)
+	game.velocity = Vector3(30, -900, 20)
+	game.is_grounded = true
+	game.jump_requested = true
+	game._update_player_movement(0.0, {})
+	check(game.camera.position == game.player_start_pos and game.velocity == Vector3.ZERO and
+		not game.is_grounded and not game.jump_requested and game.player_stats.health == 37.0,
+		"Fallen player returns to start without health loss, including fly mode")
+	game.fly_mode = false
+	game.camera.position.y = game.world_fall_y + 1
+	game.velocity.y = -100
+	game._update_player_movement(0.1, {})
+	check(game.camera.position == game.player_start_pos and game.velocity == Vector3.ZERO,
+		"Player crossing cutoff during movement recovers in the same frame")
+
+	var mesh := model.create_instance("")
+	var weapon := Node3D.new()
+	game.world_root.add_child(mesh)
+	game.world_root.add_child(weapon)
+	var monster := Monster.new(game, model, mesh, null, weapon, Monster.get_config("GOBLIN"), Vector3.ZERO, 0, 1)
+	var spawn := game.player_start_pos + Vector3(0, -50, 0)
+	monster.health = 7
+	monster.position = Vector3(0, game.world_fall_y + 1, 0)
+	monster.velocity = Vector3(0, -100, 0)
+	monster.state = Monster.State.ATTACK
+	monster.pending_spell = "FIREBALL"
+	monster.has_los = true
+	monster.update(0.1, game.player_start_pos + Vector3(4000, 0, 0))
+	check(monster.position == spawn and monster.velocity == Vector3.ZERO and
+		mesh.position == spawn and weapon.position == spawn and not monster.bbox.is_empty() and
+		monster.hp_bar.position == spawn + Vector3(0, monster.health_bar_height, 0) and
+		monster.health == 7 and monster.pending_spell == "" and not monster.has_los,
+		"Fallen monster recovers physics, visuals, bounds and attack state without healing")
+
+	for caster in [false, true]:
+		monster.config = Monster.get_config("SORCERER" if caster else "GOBLIN")
+		for height in [-1.0, 1.0]:
+			var target := spawn + Vector3(20, 50 + height * (700 if caster else 200), 0)
+			monster.position = spawn
+			for initial_state in [Monster.State.ALERT, Monster.State.CHASE]:
+				monster.state = initial_state
+				monster.state_timer = 0
+				monster.has_los = true
+				monster.los_timer = 1
+				monster.update(0, target)
+				check(monster.state != Monster.State.ATTACK,
+					"Height blocks attack entry (caster=%s, sign=%s, state=%s)" % [caster, height, initial_state])
+			monster.state = Monster.State.ATTACK
+			monster.is_melee_attack = not caster
+			monster.pending_spell = "FIREBALL" if caster else ""
+			monster.has_dealt_damage = false
+			monster.set_animation(Monster.ANIMS.ATTACK, true)
+			monster.anim_timer = 0.5
+			monster.update(0, target)
+			check(game.damage_taken == 0 and game.spells_launched == 0 and monster.state != Monster.State.ATTACK,
+				"Height cancels wound-up attack (caster=%s, sign=%s)" % [caster, height])
+
+		monster.state = Monster.State.CHASE
+		monster.attack_cooldown = 0
+		monster.update(0, spawn + Vector3(300, 650, 0) if caster else spawn + Vector3(60, 120, 0))
+		check(monster.state != Monster.State.ATTACK, "Combined horizontal and vertical distance limits attacks (caster=%s)" % caster)
+		monster.state = Monster.State.ATTACK
+		monster.is_melee_attack = not caster
+		monster.has_dealt_damage = false
+		monster.pending_spell = "FIREBALL" if caster else ""
+		monster.set_animation(Monster.ANIMS.ATTACK, true)
+		monster.anim_timer = 0.5
+		monster.update(0, spawn + Vector3(80, 50, 0))
+		check(game.spells_launched == 1 if caster else game.damage_taken == monster.config.damage,
+			"In-range attack still lands (caster=%s)" % caster)
+		game.damage_taken = 0
+
+	monster.state = Monster.State.DEATH
+	monster.dead = true
+	monster.health = 0
+	monster.position.y = game.world_fall_y - 1
+	monster.update(0, game.player_start_pos)
+	check(monster.position == spawn and monster.dead and monster.health == 0 and monster.bbox.is_empty(),
+		"Fallen dead monster returns without revival")
+	game.free()
+	Monster.clear_shared()
 
 
 func _xr_ui_transition_test() -> void:

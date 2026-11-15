@@ -153,6 +153,12 @@ The headless tests cover repeated bursts beyond pool capacity and blood-trail sa
 
 ### Running Automated Headless Tests
 
+Players and monsters that fall more than 1,000 world units below the map's lowest
+collision geometry return to the map's start position with their velocity cleared.
+Recovery preserves health and progression (and does not revive dead monsters).
+Monster melee and spell attack ranges include vertical separation, with range
+checked again during attack wind-up.
+
 Run the headless test suite to verify parsers, collision math, model loaders, and dungeon generation:
 
 ```bash
