@@ -90,8 +90,20 @@ func _xr_ui_transition_test() -> void:
 	root.add_child(host)
 	var ui := GameUI.new()
 	host.add_child(ui)
+	var original_button_font := ui._btn_new.get_theme_font("font")
+	var original_prompt_font := ui._prompt.get_theme_font("font")
+	# Exercise the web desktop font path in the native headless runner.
+	ui._prepare_desktop_menu_font()
 	await process_frame
 	await process_frame
+	check(ui._desktop_menu_font != ThemeDB.fallback_font and
+		ui._desktop_menu_font.multichannel_signed_distance_field and
+		ui._btn_new.get_theme_font("font") == ui._desktop_menu_font and
+		ui._prompt.get_theme_font("font") == ui._desktop_menu_font,
+		"Web desktop menu uses a private scale-independent vector font")
+	check(not original_button_font.multichannel_signed_distance_field and
+		not original_prompt_font.multichannel_signed_distance_field,
+		"Desktop font setup leaves original VR fonts unchanged")
 	var menu_size := ui._menu.size
 	var button_size := ui._btn_new.size
 	check(ui._menu.get_global_rect().size.is_equal_approx(menu_size * 3.0) and
@@ -111,6 +123,9 @@ func _xr_ui_transition_test() -> void:
 		rig.attach_hud_overlays(ui)
 		await process_frame
 		await process_frame
+		check(ui._btn_new.get_theme_font("font") == original_button_font and
+			ui._prompt.get_theme_font("font") == original_prompt_font,
+			"Entering VR restores the original menu fonts (%d)" % iteration)
 		check(ui._menu.scale == Vector2.ONE and
 			ui._btn_new.get_global_rect().size.is_equal_approx(button_size),
 			"VR menu and buttons retain their original size (%d)" % iteration)
@@ -120,6 +135,9 @@ func _xr_ui_transition_test() -> void:
 		ui.move_to_viewport(host)
 		await process_frame
 		await process_frame
+		check(ui._btn_new.get_theme_font("font") == ui._desktop_menu_font and
+			ui._prompt.get_theme_font("font") == ui._desktop_menu_font,
+			"Exiting VR restores sharp desktop fonts (%d)" % iteration)
 		check(ui._menu.get_global_rect().size.is_equal_approx(menu_size * 3.0) and
 			ui._btn_new.get_global_rect().size.is_equal_approx(button_size * 3.0),
 			"Exiting VR restores the enlarged desktop menu (%d)" % iteration)

@@ -71,6 +71,8 @@ var _toast_timer := 0.0
 
 # Menu
 var _menu: PanelContainer
+var _desktop_menu_font: FontFile
+var _menu_original_fonts: Dictionary[Control, Font] = {}
 var _views: Dictionary = {}
 var _current_view := "main"
 var _prompt: Label
@@ -114,6 +116,8 @@ func _ready() -> void:
 	_build_hud(root)
 	_build_loading(root)
 	_build_menu(root)
+	if OS.has_feature("web"):
+		_prepare_desktop_menu_font()
 	_build_toast(root)
 	get_viewport().size_changed.connect(_on_resize)
 	_on_resize()
@@ -625,12 +629,27 @@ func _set_fill(fill: ColorRect, pct: float) -> void:
 
 # ---------------------------------------------------------------- Menu
 
+func _prepare_desktop_menu_font() -> void:
+	# Web SystemFont uses the engine fallback; copy its vector data, not the shared VR font.
+	_desktop_menu_font = ThemeDB.fallback_font.duplicate() as FontFile
+	assert(_desktop_menu_font != null, "The engine fallback must be a vector FontFile")
+	_desktop_menu_font.multichannel_signed_distance_field = true
+	for control: Control in _menu.find_children("*", "Control", true, false):
+		if control.has_theme_font_override("font"):
+			_menu_original_fonts[control] = control.get_theme_font("font")
+	_fit_menu()
+
+
 func _fit_menu() -> void:
 	if _menu == null:
 		return
 	_menu.pivot_offset = _menu.size * 0.5
 	var menu_scale := 1.0 if get_viewport() is SubViewport else DESKTOP_MENU_SCALE
 	_menu.scale = Vector2.ONE * menu_scale
+	for control: Control in _menu_original_fonts:
+		var font: Font = _menu_original_fonts[control] if get_viewport() is SubViewport else _desktop_menu_font
+		if control.get_theme_font("font") != font:
+			control.add_theme_font_override("font", font)
 
 
 func _menu_button(text: String, primary: bool = false) -> Button:

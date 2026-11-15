@@ -119,7 +119,9 @@ to the desktop menu. WebXR controller mappings can vary by device; left grip ope
 menu in the web build.
 
 Desktop menus, including the **Enter VR** button, render at three times their original
-size for readability. In-headset VR menus retain their original size.
+size for readability. The web desktop menu uses scale-independent MSDF text so the
+enlargement stays sharp in headset browsers, including Meta Browser fullscreen.
+In-headset VR menus retain their original size and fonts.
 
 Export directly to `index.html`, rather than renaming the generated HTML:
 
