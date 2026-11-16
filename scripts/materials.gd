@@ -99,19 +99,23 @@ static var _fallback: Texture2D = null
 static var _black: Texture2D = null
 
 
+# Per-instance shader values live in a per-mesh duplicated material on every renderer and
+# platform. `instance uniform`s are unsupported by Compatibility and misbehaved on the native
+# Quest renderers (random lamp colours, frozen monster animation), unlike this web-proven path.
 static func instance_shader_code(code: String) -> String:
-	return code.replace("instance uniform ", "uniform ") if OS.has_feature("web") else code
+	return code.replace("instance uniform ", "uniform ")
 
 
 static func instance_material(mat: ShaderMaterial) -> ShaderMaterial:
-	return mat.duplicate() as ShaderMaterial if OS.has_feature("web") else mat
+	return mat.duplicate() as ShaderMaterial
 
 
 static func set_instance_parameter(mesh: GeometryInstance3D, parameter: StringName, value: Variant) -> void:
-	if OS.has_feature("web"):
-		(mesh.material_override as ShaderMaterial).set_shader_parameter(parameter, value)
-	else:
-		mesh.set_instance_shader_parameter(parameter, value)
+	(mesh.material_override as ShaderMaterial).set_shader_parameter(parameter, value)
+
+
+static func get_instance_parameter(mesh: GeometryInstance3D, parameter: StringName) -> Variant:
+	return (mesh.material_override as ShaderMaterial).get_shader_parameter(parameter)
 
 
 static func get_shader(kind: String) -> Shader:

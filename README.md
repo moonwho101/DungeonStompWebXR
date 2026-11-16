@@ -117,6 +117,11 @@ The web build uses Godot's Compatibility renderer. Immersive VR requires a
 WebXR-capable browser and headset, and HTTPS (GitHub Pages provides HTTPS).
 Open the site directly in Meta Browser on a Quest headset, or use a supported PC
 browser with an active VR runtime and connected headset, then choose **Enter VR** on the main menu.
+
+On every renderer and platform, per-instance shader values (lamp glare, monster animation
+frames, health bars) are stored in per-mesh duplicated materials rather than `instance uniform`s,
+which are unsupported by Compatibility and unreliable on native Quest builds; see
+[scripts/materials.gd](scripts/materials.gd).
 The button reports when immersive VR is unavailable; exiting the headset session returns
 to the desktop menu. Pull the **left trigger** to open the VR menu; release it and pull
 again to resume or go back from a submenu. The side/grip button no longer opens the menu.

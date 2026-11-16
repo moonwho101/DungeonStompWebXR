@@ -395,11 +395,11 @@ func _xr_tests(models: Parsers.ModelListParser) -> void:
 	var rig := XRRig.new()
 	rig.weapon_anchor = Node3D.new()
 	var mesh := axe.create_instance(axe_def.texture_alias)
-	mesh.set_instance_shader_parameter("frames", Vector4(7, 8, 0, 0))
-	mesh.set_instance_shader_parameter("weights", Vector4(0.5, 0.5, 0, 0))
+	Materials.set_instance_parameter(mesh, "frames", Vector4(7, 8, 0, 0))
+	Materials.set_instance_parameter(mesh, "weights", Vector4(0.5, 0.5, 0, 0))
 	rig.attach_weapon(mesh, axe, axe_def.name, axe_def.scale)
-	check(mesh.get_instance_shader_parameter("frames") == Vector4.ZERO
-		and mesh.get_instance_shader_parameter("weights") == Vector4(1, 0, 0, 0), "XR weapon is held in fixed frame-0 pose")
+	check(Materials.get_instance_parameter(mesh, "frames") == Vector4.ZERO
+		and Materials.get_instance_parameter(mesh, "weights") == Vector4(1, 0, 0, 0), "XR weapon is held in fixed frame-0 pose")
 	check(mesh.get_parent() == rig.weapon_anchor, "XR weapon parented to the controller anchor")
 	rig.weapon_anchor.free()
 	rig.free()
