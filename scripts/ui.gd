@@ -788,6 +788,9 @@ func _build_menu(root: Control) -> void:
 	main.add_child(_help("WASD = Move   ·   Space = Jump   ·   E = Open Door   ·   G = Regen Dungeon   ·   Q/Z = Weapon   ·   Esc = Menu"))
 	main.add_child(_help("🎮 L-Stick = Move (L3 Sprint)   ·   R-Stick = Look (R3 Level)   ·   RT = Attack / Cast   ·   X = Open Door/Chest   ·   A = Jump / Confirm   ·   LB/RB = Weapon   ·   LT = Sprint   ·   Start = Menu"))
 	main.add_child(_help("Find the glowing exit portal to descend — every level is tougher."))
+	var credit := _label("Created By Mark Longo Copyright 2001-%d" % Time.get_date_dict_from_system().year, _font, 12, Color("#94a3b8"))
+	credit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	main.add_child(credit)
 	outer.add_child(main)
 	_views["main"] = main
 
